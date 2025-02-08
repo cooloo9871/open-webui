@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webui
+  labels:
+    app: webui
+  namespace: ollama
+spec:
+  selector:
+    matchLabels:
+      app: webui # has to match .spec.template.metadata.labels
+  replicas: 1 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: webui # has to match .spec.selector.matchLabels
+    spec:
+      hostname: webui
+      containers:
+        - name: dbadm
+          image: quay.io/flysangel/open-webui:dbadm-v1.0.0
+          imagePullPolicy: Always # Always, Nerver, IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          env:
+            - name: ADMIN_MAIL
+              value: "admin@tks.com"
+            - name: ADMIN_PASSWORD
+              value: "admin"
+            - name: SQLITE_DB
+              value: "/app/backend/data/webui.db"
+          volumeMounts:
+            - name: webui
+              mountPath: /app/backend/data
+        - name: webui
+          image: ghcr.io/open-webui/open-webui:main
+          imagePullPolicy: Always # Always, Nerver, IfNotPresent
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          env:
+            - name: ENV
+              value: "dev"
+            - name: WEBUI_AUTH
+              value: "True"
+            - name: ENABLE_SIGNUP
+              value: "True"
+            - name: OLLAMA_BASE_URL
+              value: "http://ollama-0.ollama:11434"
+            - name: DEFAULT_MODELS
+              value: "llama3.2:1b"
+            - name: TASK_MODEL
+              value: "llama3.2:1b"
+            - name: RAG_EMBEDDING_ENGINE
+              value: "ollama"
+            - name: RAG_EMBEDDING_MODEL
+              value: "nomic-embed-text"
+            - name: ENABLE_OPENAI_API
+              value: "False"
+          volumeMounts:
+            - name: webui
+              mountPath: /app/backend/data
+      volumes:
+        - name: webui
+          persistentVolumeClaim:
+            claimName: webui
+      restartPolicy: Always
